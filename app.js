@@ -12,17 +12,18 @@ const tx=async(m,f)=>{const d=await db;return new Promise((r,j)=>{const t=d.tran
 // ---- sources: only the audio stream is ever requested (Piped / Invidious)
 const F=async(u,ms=7000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw 0;return await r.json()}finally{clearTimeout(t)}};
 const pick=a=>{if(!a.length)throw 0;a.sort((x,y)=>x.b-y.b);return(S.sv?a[0]:a.reduce((p,c)=>Math.abs(c.b-128e3)<Math.abs(p.b-128e3)?c:p)).u};
+const FB=['https://pipedapi.kavin.rocks','https://pipedapi.leptons.xyz','https://api.piped.private.coffee','https://piped-api.codespace.cz','https://api.piped.yt','https://pipedapi.drgns.space','https://pipedapi.reallyaweso.me','https://pipedapi.ducks.party','https://pipedapi.orangenet.cc','https://pipedapi.adminforge.de'];
 async function insts(){if(I)return I;let p=[],v=[];
  const[a,b]=await Promise.allSettled([F('https://piped-instances.kavin.rocks/'),F('https://api.invidious.io/instances.json?sort_by=health')]);
  if(Array.isArray(a.value))p=a.value.sort((x,y)=>(y.uptime_30d||0)-(x.uptime_30d||0)).map(x=>x.api_url).filter(u=>/^https:/.test(u||''));
  if(Array.isArray(b.value))v=b.value.filter(x=>x[1]?.api&&x[1]?.cors&&x[1]?.type=='https').map(x=>x[1].uri);
  const c=S.inst.split(/[\s,]+/).filter(Boolean).map(u=>({u:u.replace(/\/$/,''),t:'?'}));
- return I=[...c,...p.slice(0,6).map(u=>({u,t:'p'})),...v.slice(0,6).map(u=>({u,t:'i'})),{u:'https://inv.nadeko.net',t:'i'}]}
+ return I=[...c,...p.slice(0,6).map(u=>({u,t:'p'})),...v.slice(0,6).map(u=>({u,t:'i'})),...FB.map(u=>({u,t:'p'})),{u:'https://inv.nadeko.net',t:'i'}]}
 const API={p:{async search(b,q){const r=await F(`${b}/search?q=${encodeURIComponent(q)}&filter=music_songs`);return r.items.filter(x=>x.url?.includes('v=')).map(x=>({id:x.url.split('v=')[1],title:x.title,artist:x.uploaderName}))},
  async stream(b,id){const r=await F(`${b}/streams/${id}`,10000);return pick(r.audioStreams.filter(s=>/mp4/.test(s.mimeType)).map(s=>({u:s.url,b:s.bitrate})))}},
  i:{async search(b,q){const r=await F(`${b}/api/v1/search?q=${encodeURIComponent(q)}&type=video`);return r.filter(x=>x.videoId).map(x=>({id:x.videoId,title:x.title,artist:x.author}))},
  async stream(b,id){const r=await F(`${b}/api/v1/videos/${id}?local=true`,10000);return pick(r.adaptiveFormats.filter(s=>/^audio\/mp4/.test(s.type)).map(s=>({u:s.url[0]=='/'?b+s.url:s.url,b:+s.bitrate})))}}};
-async function via(fn,...a){const l=await insts();for(let k=0;k<l.length;k++){const n=l[k];for(const t of n.t=='?'?['p','i']:[n.t])try{const r=await API[t][fn](n.u,...a);if(k){l.splice(k,1);l.unshift(n)}return r}catch{}}throw new Error('fail')}
+async function via(fn,...a){const l=await insts();for(let k=0;k<l.length;k+=3){try{const[r,n]=await Promise.any(l.slice(k,k+3).flatMap(n=>(n.t=='?'?['p','i']:[n.t]).map(t=>API[t][fn](n.u,...a).then(r=>[r,n]))));l.splice(l.indexOf(n),1);l.unshift(n);return r}catch{}}throw new Error('fail')}
 // ---- player
 async function src(t){const r=await tx('readonly',s=>s.get(t.id));if(r)return URL.createObjectURL(r.blob);if(nu?.id==t.id)return nu.u;return via('stream',t.id)}
 function setSrc(u){if(ou)URL.revokeObjectURL(ou);ou=u.startsWith('blob:')?u:null;A.src=u}
