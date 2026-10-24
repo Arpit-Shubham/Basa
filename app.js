@@ -13,9 +13,11 @@ const tx=async(m,f)=>{const d=await db;return new Promise((r,j)=>{const t=d.tran
 const F=async(u,ms=7000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw 0;return await r.json()}finally{clearTimeout(t)}};
 const pick=a=>{if(!a.length)throw 0;a.sort((x,y)=>x.b-y.b);return(S.sv?a[0]:a.reduce((p,c)=>Math.abs(c.b-128e3)<Math.abs(p.b-128e3)?c:p)).u};
 async function insts(){if(I)return I;let p=[],v=[];
- try{const j=await F('https://raw.githubusercontent.com/n-ce/Uma/main/dynamic_instances.json'),g=a=>(Array.isArray(a)?a:[]).map(x=>typeof x=='string'?x:x?.api_url||x?.url||x?.[0]).filter(x=>/^https:/.test(x||''));p=g(j.piped);v=g(j.invidious)}catch{}
+ const[a,b]=await Promise.allSettled([F('https://piped-instances.kavin.rocks/'),F('https://api.invidious.io/instances.json?sort_by=health')]);
+ if(Array.isArray(a.value))p=a.value.sort((x,y)=>(y.uptime_30d||0)-(x.uptime_30d||0)).map(x=>x.api_url).filter(u=>/^https:/.test(u||''));
+ if(Array.isArray(b.value))v=b.value.filter(x=>x[1]?.api&&x[1]?.cors&&x[1]?.type=='https').map(x=>x[1].uri);
  const c=S.inst.split(/[\s,]+/).filter(Boolean).map(u=>({u:u.replace(/\/$/,''),t:'?'}));
- return I=[...c,...p.slice(0,5).map(u=>({u,t:'p'})),...v.slice(0,5).map(u=>({u,t:'i'})),{u:'https://inv.nadeko.net',t:'i'}]}
+ return I=[...c,...p.slice(0,6).map(u=>({u,t:'p'})),...v.slice(0,6).map(u=>({u,t:'i'})),{u:'https://inv.nadeko.net',t:'i'}]}
 const API={p:{async search(b,q){const r=await F(`${b}/search?q=${encodeURIComponent(q)}&filter=music_songs`);return r.items.filter(x=>x.url?.includes('v=')).map(x=>({id:x.url.split('v=')[1],title:x.title,artist:x.uploaderName}))},
  async stream(b,id){const r=await F(`${b}/streams/${id}`,10000);return pick(r.audioStreams.filter(s=>/mp4/.test(s.mimeType)).map(s=>({u:s.url,b:s.bitrate})))}},
  i:{async search(b,q){const r=await F(`${b}/api/v1/search?q=${encodeURIComponent(q)}&type=video`);return r.filter(x=>x.videoId).map(x=>({id:x.videoId,title:x.title,artist:x.author}))},
